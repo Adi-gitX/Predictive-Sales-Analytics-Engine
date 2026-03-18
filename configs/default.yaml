@@ -1,0 +1,31 @@
+project_name: predictive_sales_analytics_engine
+seed: 42
+
+target:
+  repeat_window_days: 180
+  score_time_rule: max_delivery_and_review
+
+split:
+  train_fraction: 0.70
+  val_fraction: 0.15
+  test_fraction: 0.15
+
+data:
+  raw_dir: data/raw
+  processed_dir: data/processed
+  results_dir: final_outputs
+  models_dir: models
+  files:
+    customers: olist_customers_dataset.csv
+    orders: olist_orders_dataset.csv
+    order_items: olist_order_items_dataset.csv
+    order_payments: olist_order_payments_dataset.csv
+    order_reviews: olist_order_reviews_dataset.csv
+    products: olist_products_dataset.csv
+    sellers: olist_sellers_dataset.csv
+    category_translation: product_category_name_translation.csv
+
+features:
+  top_k_precision: 0.10
+  text_max_features: 30000
+  text_min_df: 5
