@@ -41,3 +41,4 @@ def compute_metrics(y_true, y_score, top_fraction=0.10, threshold=None):
         "brier": float(brier_score_loss(y_true, y_score)),
         "threshold": float(threshold),
     }
+
