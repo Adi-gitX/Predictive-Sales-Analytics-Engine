@@ -111,12 +111,15 @@ The final takeaway is simple: for first-order retention prediction in Olist, str
 Time: 1 minute
 
 If asked to demo live, open:
-- [Final_Submission_Notebook.ipynb](Final_Submission_Notebook.ipynb)
+- `../notebooks/01_Literature_Review.ipynb`
+- `../notebooks/02_EDA.ipynb`
+- `../notebooks/03_Preprocessing.ipynb`
+- `../notebooks/04_Feature_Engineering.ipynb`
+- `../notebooks/05_Baseline_ML_Model.ipynb`
 
 Show these sections in order:
-1. Problem statement
-2. Processed split summary
-3. EDA plots
-4. Baseline comparison table and PR-AUC/Lift plots
-5. Explainability plot
-6. Final conclusion
+1. Literature framing
+2. EDA highlights
+3. Preprocessing choices
+4. Feature engineering story
+5. Baseline model comparison and final conclusion

@@ -1,7 +1,7 @@
 # Predictive Sales Analytics Engine
 
 ## Open First
-Start with [submission/Final_Submission_Notebook.ipynb](submission/Final_Submission_Notebook.ipynb). It is the simplest evaluator-facing artifact and presents the phase-1 baseline submission from problem framing through final conclusion.
+Start with the notebooks in the order listed below. The project is now organized as five evaluator-friendly Jupyter notebooks under `notebooks/`, each focused on one submission section.
 
 ## Problem
 This project predicts whether a customer will make another purchase within 180 days after the first delivered order using the Olist Brazilian e-commerce dataset. The task is framed as a CRM retention problem rather than a sentiment or review-score benchmark.
@@ -22,6 +22,9 @@ Each modeling row represents only the customer's first delivered order. The scor
 ## Recommended Final Model
 `tabular_rf` is the phase-1 final recommendation because it is the strongest held-out baseline on PR-AUC while remaining simple, interpretable, and easy to explain.
 
+## Why This Is Viva-Friendly
+Every step in the project is easy to defend: the target is business-relevant, the leakage control is explicit, the baseline ladder is honest, and the final model choice follows held-out test ranking quality rather than unnecessary complexity.
+
 ## Repo Structure
 ```text
 .
@@ -34,7 +37,6 @@ Each modeling row represents only the customer's first delivered order. The scor
 ├── notebooks/
 ├── scripts/
 ├── src/
-├── models/
 ├── final_outputs/
 └── submission/
 ```
@@ -48,7 +50,6 @@ python scripts/05_validate_submission.py
 ```
 
 ## Main Files
-- Final notebook: [submission/Final_Submission_Notebook.ipynb](submission/Final_Submission_Notebook.ipynb)
 - Section notebooks: [notebooks](notebooks)
 - Config: [configs/default.yaml](configs/default.yaml)
 - Final summaries: [final_outputs](final_outputs)
@@ -56,8 +57,7 @@ python scripts/05_validate_submission.py
 
 ## Section Notebook Order
 1. [notebooks/01_Literature_Review.ipynb](notebooks/01_Literature_Review.ipynb)
-2. [notebooks/02_Dataset_Quality_and_EDA.ipynb](notebooks/02_Dataset_Quality_and_EDA.ipynb)
-3. [notebooks/03_Feature_Engineering.ipynb](notebooks/03_Feature_Engineering.ipynb)
-4. [notebooks/04_Model_Application_and_Evaluation.ipynb](notebooks/04_Model_Application_and_Evaluation.ipynb)
-5. [notebooks/05_Explainability_and_Theoretical_Rigor.ipynb](notebooks/05_Explainability_and_Theoretical_Rigor.ipynb)
-6. [submission/Final_Submission_Notebook.ipynb](submission/Final_Submission_Notebook.ipynb)
+2. [notebooks/02_EDA.ipynb](notebooks/02_EDA.ipynb)
+3. [notebooks/03_Preprocessing.ipynb](notebooks/03_Preprocessing.ipynb)
+4. [notebooks/04_Feature_Engineering.ipynb](notebooks/04_Feature_Engineering.ipynb)
+5. [notebooks/05_Baseline_ML_Model.ipynb](notebooks/05_Baseline_ML_Model.ipynb)

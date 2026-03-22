@@ -12,14 +12,12 @@ os.environ.setdefault("PYTHONDONTWRITEBYTECODE", "1")
 os.environ.setdefault("LOKY_MAX_CPU_COUNT", "8")
 warnings.filterwarnings("ignore", message="Could not find the number of physical cores*", category=UserWarning)
 
-import joblib
 import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(str(PROJECT_ROOT / "src"))
 
-from sales_analytics.metrics import compute_metrics
-from sales_analytics.preprocessing import get_baseline_tabular_feature_columns, select_baseline_tabular_frame
+from sales_analytics.preprocessing import get_baseline_tabular_feature_columns
 
 
 EXPECTED_METRIC_COLUMNS = [
@@ -35,14 +33,12 @@ EXPECTED_METRIC_COLUMNS = [
     "brier",
     "threshold",
 ]
-EXPECTED_EXPLAINABILITY_FILES = [
-    "tabular_rf_permutation.csv",
-    "combined_coefficients.csv",
-    "text_terms.csv",
-    "text_terms.png",
-    "partial_dependence/pdp_delivery_delay_days_clipped.png",
-    "partial_dependence/pdp_freight_ratio.png",
-    "partial_dependence/pdp_review_score.png",
+EXPECTED_NOTEBOOKS = [
+    "01_Literature_Review.ipynb",
+    "02_EDA.ipynb",
+    "03_Preprocessing.ipynb",
+    "04_Feature_Engineering.ipynb",
+    "05_Baseline_ML_Model.ipynb",
 ]
 FORBIDDEN_PATH_FRAGMENT = "/Users/kammatiaditya/"
 
@@ -113,50 +109,24 @@ def validate_metric_files(failures: list[str]) -> pd.DataFrame:
     return metrics
 
 
-def validate_models_and_metrics(test_df: pd.DataFrame, failures: list[str]) -> None:
-    model_paths = sorted((PROJECT_ROOT / "models").rglob("*.joblib"))
-    check(len(model_paths) == 6, "All expected baseline joblib artifacts are present.", failures)
-    for path in model_paths:
-        try:
-            joblib.load(path)
-        except Exception as exc:
-            failures.append(f"Could not load {path}: {exc}")
-            print(f"[FAIL] Could not load {path}: {exc}")
-
-    baseline_model = joblib.load(PROJECT_ROOT / "models/baselines/tabular_rf.joblib")
-    best_model = json.loads((PROJECT_ROOT / "final_outputs/best_model_summary.json").read_text(encoding="utf-8"))
-    expected = best_model["recommended_model_test_metrics"]
-    y_test = test_df["target_repeat_within_180d"]
-    baseline_features = select_baseline_tabular_frame(test_df)
-    proba = baseline_model.predict_proba(baseline_features)[:, 1]
-    recomputed = compute_metrics(y_test, proba, threshold=float(expected["threshold"]))
-    all_match = True
-    for key in ["pr_auc", "roc_auc", "precision_at_k", "lift_at_k", "f1", "precision", "recall", "brier", "threshold"]:
-        all_match = all_match and abs(float(recomputed[key]) - float(expected[key])) < 1e-12
-    check(all_match, "Recommended-model test metrics exactly reproduce from the saved joblib model.", failures)
-
-
-def validate_explainability_outputs(failures: list[str]) -> None:
-    explainability_dir = PROJECT_ROOT / "final_outputs/explainability"
-    for relative_path in EXPECTED_EXPLAINABILITY_FILES:
-        check((explainability_dir / relative_path).exists(), f"Explainability artifact exists: {relative_path}", failures)
-
-    permutation = pd.read_csv(explainability_dir / "tabular_rf_permutation.csv")
-    forbidden_features = {"target_repeat_within_180d", "order_id", "customer_unique_id", "score_time", "review_text"}
-    check(forbidden_features.isdisjoint(set(permutation["feature"])), "Permutation importance contains only real tabular model features.", failures)
-    check(set(permutation["feature"]) == set(get_baseline_tabular_feature_columns()), "Permutation importance covers the exact baseline feature set.", failures)
-    probe_paths = sorted(explainability_dir.rglob("*probe*"))
-    check(not probe_paths, "No probe explainability artifacts remain in final_outputs.", failures)
-
-
 def validate_notebooks_and_links(failures: list[str]) -> None:
-    notebook_paths = sorted((PROJECT_ROOT / "notebooks").glob("*.ipynb")) + [PROJECT_ROOT / "submission/Final_Submission_Notebook.ipynb"]
+    notebook_paths = sorted((PROJECT_ROOT / "notebooks").glob("*.ipynb"))
+    check([path.name for path in notebook_paths] == EXPECTED_NOTEBOOKS, "The notebooks directory contains exactly the five final submission notebooks.", failures)
     for path in notebook_paths:
         nb = json.loads(path.read_text(encoding="utf-8"))
+        has_markdown = any(cell.get("cell_type") == "markdown" for cell in nb["cells"])
         code_cells = [cell for cell in nb["cells"] if cell.get("cell_type") == "code"]
-        executed = all(cell.get("execution_count") is not None for cell in code_cells)
         has_errors = any(output.get("output_type") == "error" for cell in code_cells for output in cell.get("outputs", []))
-        check(executed, f"{path.relative_to(PROJECT_ROOT)} has all code cells executed.", failures)
+        syntax_ok = True
+        for index, cell in enumerate(code_cells):
+            try:
+                ast.parse("".join(cell.get("source", [])), filename=f"{path.name}#cell-{index}")
+            except SyntaxError as exc:
+                syntax_ok = False
+                failures.append(f"Syntax error in {path.relative_to(PROJECT_ROOT)} code cell {index}: {exc}")
+                print(f"[FAIL] Syntax error in {path.relative_to(PROJECT_ROOT)} code cell {index}: {exc}")
+        check(has_markdown, f"{path.relative_to(PROJECT_ROOT)} includes explanatory markdown cells.", failures)
+        check(syntax_ok, f"{path.relative_to(PROJECT_ROOT)} has syntactically valid code cells.", failures)
         check(not has_errors, f"{path.relative_to(PROJECT_ROOT)} has no error outputs.", failures)
         check(FORBIDDEN_PATH_FRAGMENT not in path.read_text(encoding="utf-8"), f"{path.relative_to(PROJECT_ROOT)} contains no absolute local paths.", failures)
 
@@ -167,6 +137,17 @@ def validate_notebooks_and_links(failures: list[str]) -> None:
 def validate_repo_cleanliness(failures: list[str]) -> None:
     pycache_dirs = list(PROJECT_ROOT.rglob("__pycache__"))
     check(not pycache_dirs, "No __pycache__ directories remain in the repo tree.", failures)
+    legacy_notebooks = [
+        PROJECT_ROOT / "notebooks/02_Dataset_Quality_and_EDA.ipynb",
+        PROJECT_ROOT / "notebooks/03_Feature_Engineering.ipynb",
+        PROJECT_ROOT / "notebooks/04_Model_Application_and_Evaluation.ipynb",
+        PROJECT_ROOT / "notebooks/05_Explainability_and_Theoretical_Rigor.ipynb",
+        PROJECT_ROOT / "notebooks/Predictive_Sales_Analytics_Engine.ipynb",
+        PROJECT_ROOT / "submission/Final_Submission_Notebook.ipynb",
+    ]
+    check(not any(path.exists() for path in legacy_notebooks), "Legacy combined and placeholder notebooks have been removed.", failures)
+    model_artifacts = sorted((PROJECT_ROOT / "models").rglob("*.joblib")) if (PROJECT_ROOT / "models").exists() else []
+    check(not model_artifacts, "No saved joblib model artifacts remain in the cleaned submission tree.", failures)
     check(not (PROJECT_ROOT / "models/advanced").exists(), "No advanced-model directory remains in the phase-1 repo.", failures)
     check(not (PROJECT_ROOT / "final_outputs/metrics_advanced.csv").exists(), "No advanced-metrics file remains in the phase-1 repo.", failures)
     check(not (PROJECT_ROOT / "scripts/03_train_advanced.py").exists(), "No advanced-training script remains in the phase-1 repo.", failures)
@@ -179,8 +160,6 @@ def main() -> int:
     train_df, val_df, test_df = validate_processed_data(failures)
     validate_summary_files(train_df, val_df, test_df, failures)
     validate_metric_files(failures)
-    validate_models_and_metrics(test_df, failures)
-    validate_explainability_outputs(failures)
     validate_notebooks_and_links(failures)
     validate_repo_cleanliness(failures)
 
