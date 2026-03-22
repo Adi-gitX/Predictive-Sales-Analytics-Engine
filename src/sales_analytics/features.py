@@ -95,3 +95,4 @@ def build_order_level_features(tables: dict, cohort: pd.DataFrame) -> pd.DataFra
         "log1p_package_volume_cm3_mean", "log1p_approval_lag_hours", "log1p_delivery_days",
     ]
     return out[keep_cols].copy()
+
