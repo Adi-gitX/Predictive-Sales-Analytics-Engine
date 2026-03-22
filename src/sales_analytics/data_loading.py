@@ -34,3 +34,4 @@ def load_raw_tables(config: dict, project_root: Path) -> dict:
         )
 
     return tables
+
