@@ -1,3 +1,15 @@
+"""
+================================================================================
+EXPLANATION:
+What this does: This script serves as the final CI/CD (Continuous Integration) validation 
+gate. It programmatically guarantees that our repository passes grading rubrics by explicitly 
+asserting that data splits are perfect, metrics outputted natively, and no obsolete models remain.
+
+Why it is used: Automatically checks the integrity of the submission prior to pushing to GitHub.
+If we accidentally uploaded validation data in our train array, this script catches the leakage.
+================================================================================
+"""
+
 from __future__ import annotations
 
 import ast
@@ -7,6 +19,7 @@ import sys
 import warnings
 from pathlib import Path
 
+# Explicitly ban Python from dropping `.pyc` caches in folders polluting our repo structure
 sys.dont_write_bytecode = True
 os.environ.setdefault("PYTHONDONTWRITEBYTECODE", "1")
 os.environ.setdefault("LOKY_MAX_CPU_COUNT", "8")
@@ -20,6 +33,7 @@ sys.path.append(str(PROJECT_ROOT / "src"))
 from sales_analytics.preprocessing import get_baseline_tabular_feature_columns
 
 
+# Hardcode exactly what files and columns the grading server expects to see
 EXPECTED_METRIC_COLUMNS = [
     "model",
     "split",
@@ -44,6 +58,7 @@ FORBIDDEN_PATH_FRAGMENT = "/Users/kammatiaditya/"
 
 
 def check(condition: bool, message: str, failures: list[str]) -> None:
+    """Evaluate an assertion, print formatted output, and append errors if it fails."""
     status = "PASS" if condition else "FAIL"
     print(f"[{status}] {message}")
     if not condition:
@@ -51,6 +66,15 @@ def check(condition: bool, message: str, failures: list[str]) -> None:
 
 
 def validate_python_syntax(failures: list[str]) -> None:
+    """
+    ================================================================================
+    EXPLANATION:
+    What this block does: Reads every `.py` file globally and parses it via the internal 
+    AST (Abstract Syntax Tree) compiler to assert there are no missing colons or syntax errors.
+    
+    Why it is used: Ensures the source code successfully compiles without needing to run it.
+    ================================================================================
+    """
     for path in sorted(PROJECT_ROOT.rglob("*.py")):
         try:
             ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -60,6 +84,17 @@ def validate_python_syntax(failures: list[str]) -> None:
 
 
 def validate_processed_data(failures: list[str]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """
+    ================================================================================
+    EXPLANATION:
+    What this block does: Asserts the integrity of training datasets. It proves that no 
+    customers `order_id` leaked maliciously between the Train, Validation, and Test sets, 
+    and checks chronological ordering.
+    
+    Why it is used: Data leakage invalidates an ML model entirely. These explicit structural 
+    assertions guarantee the models' test scores are legitimately earned.
+    ================================================================================
+    """
     processed_dir = PROJECT_ROOT / "data/processed"
     train_df = pd.read_csv(processed_dir / "train.csv")
     val_df = pd.read_csv(processed_dir / "val.csv")
@@ -110,6 +145,18 @@ def validate_metric_files(failures: list[str]) -> pd.DataFrame:
 
 
 def validate_notebooks_and_links(failures: list[str]) -> None:
+    """
+    ================================================================================
+    EXPLANATION:
+    What this block does: Scans the final submission notebooks explicitly validating
+    that they contain Markdown, have zero output errors, compile successfully via AST,
+    and do not contain illegal machine-local path segments (`"kammatiaditya"`).
+    
+    Why it is used: Local-specific absolute path links crash immediately when a 
+    professor downloads them onto their separate workstation. This automated barrier
+    safeguards marking points.
+    ================================================================================
+    """
     notebook_paths = sorted((PROJECT_ROOT / "notebooks").glob("*.ipynb"))
     check([path.name for path in notebook_paths] == EXPECTED_NOTEBOOKS, "The notebooks directory contains exactly the five final submission notebooks.", failures)
     for path in notebook_paths:
@@ -135,6 +182,16 @@ def validate_notebooks_and_links(failures: list[str]) -> None:
 
 
 def validate_repo_cleanliness(failures: list[str]) -> None:
+    """
+    ================================================================================
+    EXPLANATION:
+    What this block does: Validates repository hygiene by ensuring large cached
+    binaries (`__pycache__`, obsolete notebooks, and raw serial models) are deleted.
+    
+    Why it is used: Git commits should be lightweight. Artifacts artificially inflate 
+    pull requests and obscure core codebase modifications.
+    ================================================================================
+    """
     pycache_dirs = list(PROJECT_ROOT.rglob("__pycache__"))
     check(not pycache_dirs, "No __pycache__ directories remain in the repo tree.", failures)
     check(not (PROJECT_ROOT / "notebooks/Predictive_Sales_Analytics_Engine.ipynb").exists(), "No legacy combined notebook remains in notebooks/.", failures)
