@@ -38,3 +38,4 @@ def make_combined_logistic_model(text_max_features=30000, text_min_df=5):
         ("tab", make_linear_tabular_preprocessor(BASELINE_NUMERIC_FEATURES, BASELINE_CATEGORICAL_FEATURES), BASELINE_NUMERIC_FEATURES + BASELINE_CATEGORICAL_FEATURES),
     ])
     return Pipeline([("preprocess", pre), ("model", LogisticRegression(max_iter=15000, class_weight="balanced", random_state=42, solver="saga"))])
+
